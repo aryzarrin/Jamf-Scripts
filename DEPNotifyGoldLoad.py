@@ -2,7 +2,7 @@
 
 ################################################################################
 # DEPNotifyGoldLoad.py                                                         #
-# Created by Arya (596322)                                                     #
+# Created by Arya                                                     #
 #    02/26/2019                                                                #
 #                                                                              #
 # This script is used to launch the DEPNotify application during the Gold Load #
@@ -17,12 +17,12 @@ import time
 import datetime
 import urllib2
 
-# sets locations of log files to be used for the Gold Load and DEPNotify
-GL_LOG = "/var/log/newGoldLoad.log"
+# sets locations of log files to be used for the Image process and DEPNotify
+IMAGE_LOG = "/var/log/newImage.log"
 DN_LOG = "/var/tmp/depnotify.log"
 
 # path to icons used
-BAH_ICON = "/Library/Application Support/JAMF/temp/icons/boozallenbadge.jpg"
+COMPANY_ICON = "/Library/Application Support/JAMF/temp/icons/companyimage.jpg"
 FAIL_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns"
 
 # URL for video used in the initial connection test
@@ -38,8 +38,8 @@ DN_APP = "/Applications/Utilities/DEPNotify.app"
 CHECK_FINDER = ["pgrep", "-x", "Finder"]
 CHECK_DOCK = ["pgrep", "-x", "Dock"]
 checkJSS = ["%s" % jamf, "checkJSSConnection"]
-TEST_POLICY = ["%s" % jamf, "policy", "-trigger", "iscasperup"]
-GOLD_LOAD_TRIGGER = ["%s" % jamf, "policy", "-trigger", "depnotifyGoldLoad"]
+TEST_POLICY = ["%s" % jamf, "policy", "-trigger", "testpolicy"]
+GOLD_LOAD_TRIGGER = ["%s" % jamf, "policy", "-trigger", "depnotifyImage"]
 
 # Obtain logged in user and user ID to launch DEPNotify
 def checkForLoggedInUser():
@@ -76,20 +76,20 @@ def checkDockRunning():
 
 # Check to see if Finder and the Dock are present before attempting to launch the DEPNotify application
 def appLaunchPreCheck():
-    writeToLog(GL_LOG, "Checking for Finder")
+    writeToLog(IMAGE_LOG, "Checking for Finder")
     while checkFinderRunning() is not 0:
         continue
     
-    writeToLog(GL_LOG, "Finder active! Checking for Dock")
+    writeToLog(IMAGE_LOG, "Finder active! Checking for Dock")
 
     while checkDockRunning() is not 0:
         continue
 
-    writeToLog(GL_LOG, "Dock active! Opening DEPNotify App..")
+    writeToLog(IMAGE_LOG, "Dock active! Opening DEPNotify App..")
 
 def writeToLog(currentLog, message):
     with open(currentLog, "a+") as log:
-        if currentLog is GL_LOG:
+        if currentLog is IMAGE_LOG:
             timeStamp = datetime.datetime.now().strftime("%m-%d-%y %H:%M:%S")
             log.write(timeStamp + ': ' + message + '\n')
         else:
@@ -103,8 +103,8 @@ def launchDEPNotify(userID, DN_APP):
 # Apply icon, initial message and look of the DEP Notify window
 def depNotifySetup():
     writeToLog(DN_LOG, "Command: WindowStyle: ActivateOnStep")
-    writeToLog(DN_LOG, "Status: Welcome to your Booz Allen Mac!")
-    writeToLog(DN_LOG, "Command: Image: %s" % BAH_ICON)
+    writeToLog(DN_LOG, "Status: Welcome to your <Company Name> Mac!")
+    writeToLog(DN_LOG, "Command: Image: %s" % COMPANY_ICON)
     # Check to see if there is an active internet connection to access the initial video
     # Returns a message indicating the internet connection is not active
     try:
@@ -124,61 +124,61 @@ def depNotifySetup():
                            "Please check your wired or wireless connection and restart your machine.")
 
 # changes DEPNotify Main text to display goldload failure message
-def goldLoadFail():
+def imageFail():
     writeToLog(DN_LOG, "Command: Image: %s" % FAIL_ICON)
-    writeToLog(DN_LOG, "Command: MainTitle: Gold Load Failed!")
+    writeToLog(DN_LOG, "Command: MainTitle: Image Failed!")
     writeToLog(DN_LOG, "Status: Error: Cannot reach management server.")
-    writeToLog(DN_LOG, "Command: MainText: We are unable to complete the Gold Load at this time. "
+    writeToLog(DN_LOG, "Command: MainText: We are unable to complete the Image at this time. "
                    "Please check your internet connection as it appears we are not able to connect to the management server. "
-                   "If you need assistance please contact the Apple team at IS_Apple@bah.com")
+                   "If you need assistance please contact the Support team at <Help Desk e-mail>")
 
 # Begins Gold Load Process
-def startGoldLoad():
-    writeToLog(DN_LOG, "Status: Beginning Gold Load..")
+def startImage():
+    writeToLog(DN_LOG, "Status: Beginning Image..")
     launchGoldLoad = Popen(GOLD_LOAD_TRIGGER, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     launchGoldLoad
-    writeToLog(GL_LOG, launchGoldLoad.communicate()[0])
+    writeToLog(IMAGE_LOG, launchGoldLoad.communicate()[0])
 
 # Method to check for Jamf Pro connection and run test policy prior to attempting Gold Load
-def goldLoadPreCheck(currentUser):
-    writeToLog(GL_LOG, "Beginning Gold Load Pre-Check:")
+def imagePreCheck(currentUser):
+    writeToLog(IMAGE_LOG, "Beginning Image Pre-Check:")
     writeToLog(DN_LOG, "Command: MainTitle: Please Wait")
-    writeToLog(GL_LOG, "============================================")
-    writeToLog(DN_LOG, "Status: Beginning Gold Load Pre-Checks...")
+    writeToLog(IMAGE_LOG, "============================================")
+    writeToLog(DN_LOG, "Status: Beginning Image Pre-Checks...")
 
     # Begin check for connection to Jamf
-    writeToLog(GL_LOG, "Checking for connection to Jamf:")
+    writeToLog(IMAGE_LOG, "Checking for connection to Jamf:")
     jamfConnectionCheck = Popen(checkJSS, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     connectionResult = jamfConnectionCheck.communicate()[0]
     returnCode = jamfConnectionCheck.returncode
 
     if "The JSS is available" in connectionResult:
-        writeToLog(GL_LOG, "Connection to Jamf succesful!")
+        writeToLog(IMAGE_LOG, "Connection to Jamf succesful!")
         # Run test policy
         runTestPolicy = Popen(TEST_POLICY, stdout=subprocess.PIPE)
         testPolicyResult = runTestPolicy.communicate()[0]
         if "Script result: up" in testPolicyResult:
-            writeToLog(GL_LOG, "Test Policy ran successfully!")
+            writeToLog(IMAGE_LOG, "Test Policy ran successfully!")
             startGoldLoad()
         elif "No policies were found" in testPolicyResult:
-            writeToLog(GL_LOG, "Failed to run Test Policy: policy not found.    - Check machine is in scope")
-            goldLoadFail()
+            writeToLog(IMAGE_LOG, "Failed to run Test Policy: policy not found.    - Check machine is in scope")
+            imageFail()
         else:
-            writeToLog(GL_LOG, "Failed to run test policy")
-            goldLoadFail()
+            writeToLog(IMAGE_LOG, "Failed to run test policy")
+            imageFail()
     elif returnCode != 0:
-        writeToLog(GL_LOG, "Failed to connect to Jamf.")
-        writeToLog(GL_LOG, "**********Check internet connection and restart machine**********")
-        goldLoadFail()
+        writeToLog(IMAGE_LOG, "Failed to connect to Jamf.")
+        writeToLog(IMAGE_LOG, "**********Check internet connection and restart machine**********")
+        imageFail()
         time.sleep(5)
         exit(1)
 
 def main():
     # Remove any previous Gold Load and DEPNotify logs
     try:
-        os.remove(GL_LOG)
+        os.remove(IMAGE_LOG)
     except OSError:
-        print "Gold Load log does not exist"
+        print "Image log does not exist"
 
     try:
         os.remove(DN_LOG)
@@ -186,17 +186,17 @@ def main():
         print "DEPNotify Log does not exist"
 
     #Create new Gold Load Log
-    open(GL_LOG, "w")
+    open(IMAGE_LOG, "w")
 
     currentUser, uID = checkForLoggedInUser()
 
-    writeToLog(GL_LOG, "Logged in User: %s" % currentUser)
-    writeToLog(GL_LOG, "User ID: %s" % uID)
+    writeToLog(IMAGE_LOG, "Logged in User: %s" % currentUser)
+    writeToLog(IMAGE_LOG, "User ID: %s" % uID)
     appLaunchPreCheck()
     launchDEPNotify(uID, DN_APP)
     depNotifySetup()
     time.sleep(43)
-    goldLoadPreCheck(currentUser)
+    imagePreCheck(currentUser)
 
 
 
