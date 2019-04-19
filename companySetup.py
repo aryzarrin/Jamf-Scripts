@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 ################################################################################
-# goldLoad.py                                                                  #
-# Created by Arya (596322)                                                     #
+# jamfProcess.py                                                               #
+# Created by Arya.                                                             #
 #    03/19/2019                                                                #
 #                                                                              #
-# This script is used to run the Gold Load policies from Jamf after DEPNotify  #
+# This script is used to run the Imaging policies from Jamf after DEPNotify    #
 # has performed its checks.                                                    #
 ################################################################################
 
@@ -20,30 +20,30 @@ import sys
 
 # resources used on the system
 JAMF_LOG = "/private/var/log/jamf.log"
-GL_LOG = "/var/log/newGoldLoad.log"
+IMAGE_LOG = "/var/log/newImage.log"
 DN_LOG = "/var/tmp/depnotify.log"
 DN_APP = "/Applications/Utilities/DEPNotify.app"
-DN_SCRIPT = "/Library/Application Support/JAMF/temp/DEPNotifyGoldLoad.py"
+DN_SCRIPT = "/Library/Application Support/JAMF/temp/DEPNotifyImage.py"
 CAUTION_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionIcon.icns"
-goldLoadAgent = "/Library/LaunchAgents/com.boozallen.launchdn.plist"
-goldLoadDaemon = "/Library/LaunchDaemons/com.boozallen.launchdepnotify.plist"
+goldLoadAgent = "/Library/LaunchAgents/com.<company name>.launchdn.plist"
+goldLoadDaemon = "/Library/LaunchDaemons/com.<company name>.launchdepnotify.plist"
 
 # path to JAMF binary
 jamf = "/usr/local/bin/jamf"
 
 # List of public facing policies
-GOLD_LOAD_POLICY_LIST = sys.argv[4].split(', ')
-policyCount = len(GOLD_LOAD_POLICY_LIST)
+IMAGE_POLICY_LIST = sys.argv[4].split(', ')
+policyCount = len(IMAGE_POLICY_LIST)
 
 # List of policies to run silently
 SECURITY_POLICIES = sys.argv[5].split(', ')
 failedPolicies = []
 
 # write to the specified log
-# Gold Load log has time stamping enabled
+# Image log has time stamping enabled
 def writeToLog(currentLog, message):
     with open(currentLog, "a+") as log:
-        if currentLog is GL_LOG:
+        if currentLog is IMAGE_LOG:
             timeStamp = datetime.datetime.now().strftime("%m-%d-%y %H:%M:%S")
             for line in message.split("\n"):
                 log.write('{0}: {1}\n'.format(timeStamp, line))
@@ -74,11 +74,11 @@ def readJamfLog(policyNumber):
 
 # checks policy outcome. Writes to gold load log and DepNotify app depending on policy type (user facing or not)
 def checkPolicySuccess(policyType, returnCode, policyName, output, errors):
-    if policyType is "GoldLoad":
+    if policyType is "Public":
         if returnCode != 0:
                 failure = "Policy %s failed to run" % policyName
-                writeToLog(GL_LOG, failure)
-                writeToLog(GL_LOG, errors)
+                writeToLog(IMAGE_LOG, failure)
+                writeToLog(IMAGE_LOG, errors)
                 failedPolicies.append(policyName)
         elif returnCode == 0:
             writeToLog(DN_LOG, "Status: Successfully Installed %s" % policyName)
@@ -87,26 +87,26 @@ def checkPolicySuccess(policyType, returnCode, policyName, output, errors):
     elif policyType is "Security":
         if returnCode != 0:
                 failure = "Policy %s failed to run" % policyName
-                writeToLog(GL_LOG, failure)
-                writeToLog(GL_LOG, errors)
+                writeToLog(IMAGE_LOG, failure)
+                writeToLog(IMAGE_LOG, errors)
                 failedPolicies.append(policyName)
 
         elif returnCode == 0:
-            writeToLog(GL_LOG, 'Policy: %s ran successfully!' % policyName)
+            writeToLog(IMAGE_LOG, 'Policy: %s ran successfully!' % policyName)
             writeToLog(DN_LOG, 'Policy: %s ran successfully!' % policyName)
 
 # runs the specified policy. 
 # output and formatting determined by policy type (user facing or not)
 def runPolicy(POLICY_LIST, policyType):
-    if policyType is "GoldLoad":
+    if policyType is "Public":
         writeToLog(DN_LOG, "Command: DeterminateManual: %s" % policyCount)
-        writeToLog(GL_LOG, "Beginning Gold Load Policies:")
-        writeToLog(GL_LOG, "============================================\n")
+        writeToLog(IMAGE_LOG, "Beginning Image Policies:")
+        writeToLog(IMAGE_LOG, "============================================\n")
         writeToLog(DN_LOG, "Installing software..")
 
     elif policyType is "Security":
-        writeToLog(GL_LOG, "============================================")
-        writeToLog(GL_LOG, "Beginning Security Policies: \n")
+        writeToLog(IMAGE_LOG, "============================================")
+        writeToLog(IMAGE_LOG, "Beginning Security Policies: \n")
         writeToLog(DN_LOG, "Status: Applying the final touches..")
 
     for policy in POLICY_LIST:
@@ -115,38 +115,38 @@ def runPolicy(POLICY_LIST, policyType):
         runPolicy = Popen(CURRENT_POLICY, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         policyName = readJamfLog(policy)
 
-        if policyType is "GoldLoad":
+        if policyType is "Public":
             writeToLog(DN_LOG, "Status: Currently installing %s" % policyName)
         elif policyType is "Security":
             writeToLog(DN_LOG, "Currently installing %s" % policyName)
 
         output, errors = runPolicy.communicate()
-        writeToLog(GL_LOG, output)
+        writeToLog(IMAGE_LOG, output)
         returnCode = runPolicy.returncode
 
         checkPolicySuccess(policyType, returnCode, policyName, output, errors)
 
 
-def goldLoadComplete():
+def imageComplete():
     if not failedPolicies:
         writeToLog(DN_LOG, "Command: DeterminateOffReset:")
         writeToLog(DN_LOG, "Status: ")
-        writeToLog(DN_LOG, "Command: MainTitle: Gold Load Complete!")
+        writeToLog(DN_LOG, "Command: MainTitle: Image Complete!")
         writeToLog(DN_LOG, "Command: ContinueButtonRestart: Restart")
-        writeToLog(DN_LOG, "Command: MainText: Congratulations! Your computer has finished Gold loading and is now ready to be used. "
+        writeToLog(DN_LOG, "Command: MainText: Congratulations! Your computer has finished Imaging and is now ready to be used. "
         "Press the Restart button to finalize your setup and get started!")
     else:
         writeToLog(DN_LOG, "Command: DeterminateOffReset:")
         writeToLog(DN_LOG, "Command: Image: %s" % CAUTION_ICON)
-        writeToLog(DN_LOG, "Status: Check Gold Load Log..")
-        writeToLog(DN_LOG, "Command: MainTitle: Gold Load Completed With Errors")
+        writeToLog(DN_LOG, "Status: Check Imaging Log..")
+        writeToLog(DN_LOG, "Command: MainTitle: Imaging Completed With Errors")
         writeToLog(DN_LOG, "Command: ContinueButtonRestart: Restart")
-        writeToLog(DN_LOG, "Command: MainText: The Gold Load has completed but some policies failed to run. "
-        "Please check the Gold Load log for more information. "
+        writeToLog(DN_LOG, "Command: MainText: The Image has completed but some policies failed to run. "
+        "Please check the Imaging log for more information. "
         "The computer will need to restart to finish applying changes. "
         "Press the Restart button to continue.")
 
-def goldLoadCleanup():
+def imageCleanup():
     LoggedInUser = subprocess.check_output(["stat", "-f%Su", "/dev/console"]).strip()
     userID = subprocess.check_output(["id", "-u", LoggedInUser]).strip()
 
@@ -174,29 +174,29 @@ def goldLoadCleanup():
 
     # submits inventory information after gold load is complete
     writeToLog(GL_LOG, "Performing Recon")
-    runRecon = Popen(["%s" % jamf, "policy", "-id", "61"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    runRecon = Popen(["%s" % jamf, "recon"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     runReconResult, runReconErrors = runRecon.communicate()
     writeToLog(GL_LOG, runReconResult)
     writeToLog(GL_LOG, runReconErrors)
 
     # remove DEPNotify Script
-    writeToLog(GL_LOG, "Removing DEPNotify Script")
+    writeToLog(IMAGE_LOG, "Removing DEPNotify Script")
 
 
 
 def main():
-    runPolicy(GOLD_LOAD_POLICY_LIST, "GoldLoad")
+    runPolicy(IMAGE_POLICY_LIST, "Public")
     runPolicy(SECURITY_POLICIES, "Security")
     if not failedPolicies:
-        goldLoadComplete()
-        goldLoadCleanup()
+        imageComplete()
+        imageCleanup()
     else:
-        writeToLog(GL_LOG, "The following policies failed:")
+        writeToLog(IMAGE_LOG, "The following policies failed:")
         for policy in failedPolicies:
-            writeToLog(GL_LOG, "%s" % policy) 
+            writeToLog(IMAGE_LOG, "%s" % policy) 
               
-        goldLoadComplete()
-        goldLoadCleanup()
+        imageComplete()
+        imageCleanup()
 
 
 
