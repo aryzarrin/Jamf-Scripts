@@ -25,8 +25,8 @@ DN_LOG = "/var/tmp/depnotify.log"
 DN_APP = "/Applications/Utilities/DEPNotify.app"
 DN_SCRIPT = "/Library/Application Support/JAMF/temp/DEPNotifyImage.py"
 CAUTION_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionIcon.icns"
-goldLoadAgent = "/Library/LaunchAgents/com.<company name>.launchdn.plist"
-goldLoadDaemon = "/Library/LaunchDaemons/com.<company name>.launchdepnotify.plist"
+imageLoadAgent = "/Library/LaunchAgents/com.<company name>.launchdn.plist"
+imageLoadDaemon = "/Library/LaunchDaemons/com.<company name>.launchdepnotify.plist"
 
 # path to JAMF binary
 jamf = "/usr/local/bin/jamf"
@@ -72,7 +72,7 @@ def readJamfLog(policyNumber):
             policyName = next(logLines)
             return policyName.split("Executing Policy ")[1].strip("\n")
 
-# checks policy outcome. Writes to gold load log and DepNotify app depending on policy type (user facing or not)
+# checks policy outcome. Writes to imaging log and DepNotify app depending on policy type (user facing or not)
 def checkPolicySuccess(policyType, returnCode, policyName, output, errors):
     if policyType is "Public":
         if returnCode != 0:
@@ -152,17 +152,17 @@ def imageCleanup():
 
     # unload LaunchAgent
     writeToLog(GL_LOG, "Removing LaunchAgent")
-    unLoadAgent = Popen(["launchctl", "asuser", "%s" % userID, "unload", "%s" % goldLoadAgent], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    unLoadAgent = Popen(["launchctl", "asuser", "%s" % userID, "unload", "%s" % imageLoadAgent], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     unLoadAgentResult, unloadAgentErrors = unLoadAgent.communicate()
     writeToLog(GL_LOG, unLoadAgentResult)
     writeToLog(GL_LOG, unloadAgentErrors)
     
     # delete LaunchAgent
-    Popen(["rm", "%s" % goldLoadAgent])
+    Popen(["rm", "%s" % imageLoadAgent])
 
     # delete LaunchDaemon
     writeToLog(GL_LOG, "Removing LaunchDaemon")
-    Popen(["rm", "-f", "%s" % goldLoadDaemon])
+    Popen(["rm", "-f", "%s" % imageLoadDaemon])
 
     # delete the DEPNotify application
     writeToLog(GL_LOG, "Removing DEPNotify.app")
@@ -172,7 +172,7 @@ def imageCleanup():
     writeToLog(GL_LOG, "removing DEPNotify Script")
     Popen(["rm", "-f", "%s" % DN_SCRIPT])
 
-    # submits inventory information after gold load is complete
+    # submits inventory information after image is complete
     writeToLog(GL_LOG, "Performing Recon")
     runRecon = Popen(["%s" % jamf, "recon"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     runReconResult, runReconErrors = runRecon.communicate()
