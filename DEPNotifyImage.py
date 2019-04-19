@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 ################################################################################
-# DEPNotifyImage.py                                                         #
-# Created by Arya                                                     #
+# DEPNotifyImage.py                                                            #
+# Created by Arya                                                              #
 #    02/26/2019                                                                #
 #                                                                              #
-# This script is used to launch the DEPNotify application during the Gold Load #
+# This script is used to launch the DEPNotify application during the setup     #
 # process as well as performing checks to help ensure the gold load's success. #
 ################################################################################
 
