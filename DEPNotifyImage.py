@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 ################################################################################
-# DEPNotifyGoldLoad.py                                                         #
+# DEPNotifyImage.py                                                         #
 # Created by Arya                                                     #
 #    02/26/2019                                                                #
 #                                                                              #
@@ -26,7 +26,7 @@ COMPANY_ICON = "/Library/Application Support/JAMF/temp/icons/companyimage.jpg"
 FAIL_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns"
 
 # URL for video used in the initial connection test
-VIDEO_URL = "https://www.youtube.com/watch?v=ay7zwM6TLhE"
+VIDEO_URL = "https://www.youtube.com/watch?v=DLzxrzFCyOs"
 
 # path to JAMF
 jamf = "/usr/local/bin/jamf"
@@ -109,7 +109,7 @@ def depNotifySetup():
     # Returns a message indicating the internet connection is not active
     try:
         urllib2.urlopen(VIDEO_URL)
-        writeToLog(DN_LOG, "Command: YouTube: ay7zwM6TLhE")
+        writeToLog(DN_LOG, "Command: YouTube: DLzxrzFCyOs")
         time.sleep(10)
         writeToLog(DN_LOG, "Status: Please wait while we configure your machine..")
     except urllib2.HTTPError, e:
@@ -123,7 +123,7 @@ def depNotifySetup():
         writeToLog(DN_LOG, "Command: MainText: There is a problem with your Internet Connection. "
                            "Please check your wired or wireless connection and restart your machine.")
 
-# changes DEPNotify Main text to display goldload failure message
+# changes DEPNotify Main text to display Image failure message
 def imageFail():
     writeToLog(DN_LOG, "Command: Image: %s" % FAIL_ICON)
     writeToLog(DN_LOG, "Command: MainTitle: Image Failed!")
@@ -132,14 +132,14 @@ def imageFail():
                    "Please check your internet connection as it appears we are not able to connect to the management server. "
                    "If you need assistance please contact the Support team at <Help Desk e-mail>")
 
-# Begins Gold Load Process
+# Begins Image Process
 def startImage():
     writeToLog(DN_LOG, "Status: Beginning Image..")
-    launchGoldLoad = Popen(GOLD_LOAD_TRIGGER, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    launchGoldLoad
-    writeToLog(IMAGE_LOG, launchGoldLoad.communicate()[0])
+    launchImage = Popen(IMAGE_TRIGGER, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    launchImage
+    writeToLog(IMAGE_LOG, launchImage.communicate()[0])
 
-# Method to check for Jamf Pro connection and run test policy prior to attempting Gold Load
+# Method to check for Jamf Pro connection and run test policy prior to attempting Image
 def imagePreCheck(currentUser):
     writeToLog(IMAGE_LOG, "Beginning Image Pre-Check:")
     writeToLog(DN_LOG, "Command: MainTitle: Please Wait")
@@ -159,7 +159,7 @@ def imagePreCheck(currentUser):
         testPolicyResult = runTestPolicy.communicate()[0]
         if "Script result: up" in testPolicyResult:
             writeToLog(IMAGE_LOG, "Test Policy ran successfully!")
-            startGoldLoad()
+            startImage()
         elif "No policies were found" in testPolicyResult:
             writeToLog(IMAGE_LOG, "Failed to run Test Policy: policy not found.    - Check machine is in scope")
             imageFail()
@@ -174,7 +174,7 @@ def imagePreCheck(currentUser):
         exit(1)
 
 def main():
-    # Remove any previous Gold Load and DEPNotify logs
+    # Remove any previous Image and DEPNotify logs
     try:
         os.remove(IMAGE_LOG)
     except OSError:
@@ -185,7 +185,7 @@ def main():
     except OSError:
         print "DEPNotify Log does not exist"
 
-    #Create new Gold Load Log
+    #Create new Image Log
     open(IMAGE_LOG, "w")
 
     currentUser, uID = checkForLoggedInUser()
